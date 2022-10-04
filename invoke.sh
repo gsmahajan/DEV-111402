@@ -40,21 +40,23 @@ secure=0
 [ ! -d logs ] && mkdir logs
 
 logfile="$HOME_DIR/logs/logrun_$(date +%F_%s).log"
-log "LogicMonitor APM Topology Lambda Test Launch - secure=$secure debug=$debug"
-log "S3 Bucket Name: $S3_BUCKET_NAME - Region - $AWS_REGION - Topology APM Lambda Function Name - $LAMBDA_FUNCTION_NAME"
+
+function logthis {
+ echo "$(date +%F" "%H:%M:%S","%s) | $1" | tee -a $logfile
+}
+
+logthis "LogicMonitor APM Topology Lambda Test Launch - secure=$secure debug=$debug"
+logthis "S3 Bucket Name: $S3_BUCKET_NAME - Region - $AWS_REGION - Topology APM Lambda Function Name - $LAMBDA_FUNCTION_NAME"
 
 echo "||Sr No||File Name||Is Lambda code start||Is Topology generated||Anomaly Observed||Topology Filename||Took (ms)||Remarks||" > logs/kpi.csv
 
-function log {
- echo "$(date +%F" "%H:%M:%S","%s) | $1" | tee -a $logfile
-}
 
 function kpi {
  echo "|$1|$2|$3|$4|$5|$6|$7|$8|" | tee -a logs/kpi.csv
 }
 
 function forcecoldstart(){
- log "Making configuration alter for lambda $LAMBDA_FUNCTION_NAME so it goes cold start on next run"
+ logthis "Making configuration alter for lambda $LAMBDA_FUNCTION_NAME so it goes cold start on next run"
  aws lambda update-function-configuration --function-name $LAMBDA_FUNCTION_NAME --description "forcing to go cold start $(date +%F%s)"
 }
 
@@ -98,10 +100,10 @@ function invokeLambdaAWS {
    payload="$(getpayload $1)"
    output="$2"
 
-   log "output=$output payload => $payload"
+   logthis "output=$output payload => $payload"
 
    # see if we can go cold start forcefully
-   [ $IS_FORCE_COLD_START -eq 1 ] && forcecoldstart on next run || log "force cold start has been disabled it is as per the aws to respond to the invoke lambda request"
+   [ $IS_FORCE_COLD_START -eq 1 ] && forcecoldstart on next run || logthis "force cold start has been disabled it is as per the aws to respond to the invoke lambda request"
 
    if [ $debug -eq 1 ] ; then
     time aws lambda invoke --function-name $LAMBDA_FUNCTION_NAME --debug --payload "$payload" --cli-binary-format raw-in-base64-out response.txt | tee -a $logfile
@@ -127,7 +129,7 @@ function main {
    took=$((($end - $begin)/1)) #fixme
    count=$((count + 1 ))
   
-   # log the kpi metrics for the operation
+   # logthis the kpi metrics for the operation
    kpi $count $s3File "NA" "NA" "NA" $topologyFile $took "NA" ; 
   done
   
